@@ -16,6 +16,8 @@ import time
 # Turn on our error catching for all subsequent imports
 import labscript_utils.excepthook
 
+# Useful utils
+import labscript_utils.file_utils
 
 # 3rd party imports:
 
@@ -1297,7 +1299,10 @@ class DataFrameModel(QtCore.QObject):
     def add_files(self, filepaths, new_row_data=None):
         to_add = []
         for filepath in filepaths:
-            if filepath in self.dataframe['filepath'].values:
+            # Ignore duplicate shots when not doing repeats.            
+            (isRep, _, _) =   labscript_utils.file_utils.is_rep_name(filepath)
+            
+            if filepath in self.dataframe['filepath'].values and not isRep:
                 # Ignore duplicates:
                 app.output_box.output('Warning: Ignoring duplicate shot %s\n' % filepath, red=True)
                 if new_row_data is not None:
