@@ -193,7 +193,7 @@ class LyseMainWindow(QtGui.QMainWindow):
             self.newWindow.emit(self.effectiveWinId())
         return result
 
-        
+
 class AnalysisRoutine(object):
 
     def __init__(self, filepath, model, output_box_port):
@@ -201,17 +201,17 @@ class AnalysisRoutine(object):
         self.shortname = os.path.basename(self.filepath)
         self.model = model
         self.output_box_port = output_box_port
-        
+
         self.COL_ACTIVE = RoutineBox.COL_ACTIVE
         self.COL_STATUS = RoutineBox.COL_STATUS
         self.COL_NAME = RoutineBox.COL_NAME
         self.ROLE_FULLPATH = RoutineBox.ROLE_FULLPATH
-        
+
         self.error = False
         self.done = False
-        
+
         self.to_worker, self.from_worker, self.worker = self.start_worker()
-        
+
         # Make a row to put into the model:
         active_item =  QtGui.QStandardItem()
         active_item.setCheckable(True)
@@ -221,9 +221,9 @@ class AnalysisRoutine(object):
         name_item.setToolTip(self.filepath)
         name_item.setData(self.filepath, self.ROLE_FULLPATH)
         self.model.appendRow([active_item, info_item, name_item])
-            
+
         self.exiting = False
-        
+
     def start_worker(self):
         # Start a worker process for this analysis routine:
         child_handles = zprocess.subprocess_with_queues('analysis_subprocess.py', self.output_box_port)
@@ -231,7 +231,7 @@ class AnalysisRoutine(object):
         # Tell the worker what script it with be executing:
         to_worker.put(self.filepath)
         return to_worker, from_worker, worker
-        
+
     def do_analysis(self, filepath):
         self.to_worker.put(['analyse', filepath])
         signal, data = self.from_worker.get()
@@ -241,7 +241,7 @@ class AnalysisRoutine(object):
             return True
         else:
             raise ValueError('invalid signal %s'%str(signal))
-        
+
     @inmain_decorator()
     def set_status(self, status):
         index = self.get_row_index()
@@ -267,7 +267,7 @@ class AnalysisRoutine(object):
             self.error = False
         else:
             raise ValueError(status)
-        
+
     @inmain_decorator()
     def enabled(self):
         index = self.get_row_index()
@@ -276,7 +276,7 @@ class AnalysisRoutine(object):
             return False
         enabled_item = self.model.item(index, self.COL_ACTIVE)
         return (enabled_item.checkState() == QtCore.Qt.Checked)
-        
+
     def get_row_index(self):
         """Returns the row index for this routine's row in the model"""
         for row in range(self.model.rowCount()):
@@ -288,7 +288,7 @@ class AnalysisRoutine(object):
     def restart(self):
         # TODO set status to 'restarting' or an icon or something, and gray out the item?
         self.end_child(restart=True)
-        
+
     def remove(self):
         """End the child process and remove from the treeview"""
         self.end_child()
@@ -297,7 +297,7 @@ class AnalysisRoutine(object):
             # Already gone
             return
         self.model.removeRow(index)
-         
+
     def end_child(self, restart=False):
         self.to_worker.put(['quit',None])
         timeout_time = time.time() + 2
@@ -326,12 +326,12 @@ class AnalysisRoutine(object):
             app.output_box.output('%s worker terminated\n'%self.shortname, red=True)
         else:
             app.output_box.output('%s worker exited cleanly\n'%self.shortname)
-        
+
         if restart:
             self.to_worker, self.from_worker, self.worker = self.start_worker()
             app.output_box.output('%s worker restarted\n'%self.shortname)
         self.exiting = False
-        
+
 
 class TreeView(QtGui.QTreeView):
     leftClicked = Signal(QtCore.QModelIndex)
@@ -379,9 +379,9 @@ class TreeView(QtGui.QTreeView):
         self._double_click = False
         return result
 
-        
+
 class RoutineBox(object):
-    
+
     COL_ACTIVE = 0
     COL_STATUS = 1
     COL_NAME = 2
@@ -392,7 +392,7 @@ class RoutineBox(object):
     # This is how we will reorder the model's rows instead of
     # using remove/insert.
     ROLE_SORTINDEX = QtCore.Qt.UserRole + 2
-    
+
     def __init__(self, container, exp_config, filebox, from_filebox, to_filebox, output_box_port, multishot=False):
         self.multishot = multishot
         self.filebox = filebox
@@ -400,9 +400,9 @@ class RoutineBox(object):
         self.from_filebox = from_filebox
         self.to_filebox = to_filebox
         self.output_box_port = output_box_port
-        
-        self.logger = logging.getLogger('lyse.RoutineBox.%s'%('multishot' if multishot else 'singleshot'))  
-        
+
+        self.logger = logging.getLogger('lyse.RoutineBox.%s'%('multishot' if multishot else 'singleshot'))
+
         loader = UiLoader()
         loader.registerCustomWidget(TreeView)
         self.ui = loader.load('routinebox.ui')
@@ -417,7 +417,7 @@ class RoutineBox(object):
         self.header = HorizontalHeaderViewWithWidgets(self.model)
         self.ui.treeView.setHeader(self.header)
         self.ui.treeView.setModel(self.model)
-        
+
         active_item = QtGui.QStandardItem()
         active_item.setToolTip('Whether the analysis routine should run')
         status_item = QtGui.QStandardItem()
@@ -425,22 +425,22 @@ class RoutineBox(object):
         status_item.setToolTip('The status of this analyis routine\'s execution')
         name_item = QtGui.QStandardItem('name')
         name_item.setToolTip('The name of the python script for the analysis routine')
-        
+
         self.select_all_checkbox = QtGui.QCheckBox()
         self.select_all_checkbox.setToolTip('whether the analysis routine should run')
         self.header.setWidget(self.COL_ACTIVE, self.select_all_checkbox)
         self.header.setStretchLastSection(True)
         self.select_all_checkbox.setTristate(False)
-        
+
         self.model.setHorizontalHeaderItem(self.COL_ACTIVE, active_item)
         self.model.setHorizontalHeaderItem(self.COL_STATUS, status_item)
         self.model.setHorizontalHeaderItem(self.COL_NAME, name_item)
         self.model.setSortRole(self.ROLE_SORTINDEX)
-        
+
         self.ui.treeView.resizeColumnToContents(self.COL_ACTIVE)
         self.ui.treeView.resizeColumnToContents(self.COL_STATUS)
         self.ui.treeView.setColumnWidth(self.COL_NAME, 200)
-        
+
         self.ui.treeView.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         # Make the actions for the context menu:
         self.action_set_selected_active = QtGui.QAction(
@@ -452,15 +452,15 @@ class RoutineBox(object):
         self.action_remove_selected = QtGui.QAction(
             QtGui.QIcon(':qtutils/fugue/minus'), 'Remove selected routines',  self.ui)
         self.last_opened_routine_folder = self.exp_config.get('paths', 'analysislib')
-        
+
         self.routines = []
-        
+
         self.connect_signals()
 
         self.analysis = threading.Thread(target = self.analysis_loop)
         self.analysis.daemon = True
         self.analysis.start()
-        
+
     def connect_signals(self):
         self.ui.toolButton_add_routines.clicked.connect(self.on_add_routines_clicked)
         self.ui.toolButton_remove_routines.clicked.connect(self.on_remove_selection)
@@ -505,7 +505,7 @@ class RoutineBox(object):
             routine = AnalysisRoutine(filepath, self.model, self.output_box_port)
             self.routines.append(routine)
         self.update_select_all_checkstate()
-        
+
     def on_treeview_double_left_clicked(self, index):
         # If double clicking on the the name item, open
         # the routine in the specified text editor:
@@ -530,7 +530,7 @@ class RoutineBox(object):
         except Exception as e:
             error_dialog("Unable to launch text editor specified in %s. Error was: %s" %
                          (self.exp_config.config_path, str(e)))
-                         
+
     def on_remove_selection(self):
         selected_indexes = self.ui.treeView.selectedIndexes()
         selected_rows = set(index.row() for index in selected_indexes)
@@ -545,11 +545,11 @@ class RoutineBox(object):
                 routine.remove()
                 self.routines.remove(routine)
         self.update_select_all_checkstate()
-        
+
     def on_model_item_changed(self, item):
         if item.column() == self.COL_ACTIVE:
             self.update_select_all_checkstate()
-        
+
     def on_select_all_state_changed(self, state):
         with self.select_all_checkbox_state_changed_disconnected:
             # Do not allow a switch *to* a partially checked state:
@@ -559,7 +559,7 @@ class RoutineBox(object):
             for row in range(self.model.rowCount()):
                 active_item = self.model.item(row, self.COL_ACTIVE)
                 active_item.setCheckState(state)
-        
+
     def on_treeView_context_menu_requested(self, point):
         menu = QtGui.QMenu(self.ui.treeView)
         menu.addAction(self.action_set_selected_active)
@@ -567,7 +567,7 @@ class RoutineBox(object):
         menu.addAction(self.action_restart_selected)
         menu.addAction(self.action_remove_selected)
         menu.exec_(QtGui.QCursor.pos())
-        
+
     def on_set_selected_triggered(self, active):
         selected_indexes = self.ui.treeView.selectedIndexes()
         selected_rows = set(index.row() for index in selected_indexes)
@@ -591,7 +591,7 @@ class RoutineBox(object):
                 order.append(i_unselected)
                 i_unselected += 1
         self.reorder(order)
-        
+
     def on_move_up_clicked(self):
         selected_indexes = self.ui.treeView.selectedIndexes()
         selected_rows = set(index.row() for index in selected_indexes)
@@ -609,7 +609,7 @@ class RoutineBox(object):
                 last_unselected_index = i
                 order.append(i)
         self.reorder(order)
-        
+
     def on_move_down_clicked(self):
         selected_indexes = self.ui.treeView.selectedIndexes()
         selected_rows = set(index.row() for index in selected_indexes)
@@ -627,7 +627,7 @@ class RoutineBox(object):
                 last_unselected_index = i
                 order.insert(0, i)
         self.reorder(order)
-        
+
     def on_move_to_bottom_clicked(self):
         selected_indexes = self.ui.treeView.selectedIndexes()
         selected_rows = set(index.row() for index in selected_indexes)
@@ -643,7 +643,7 @@ class RoutineBox(object):
                 order.append(i_unselected)
                 i_unselected += 1
         self.reorder(order)
-        
+
     def on_restart_selected_triggered(self):
         selected_indexes = self.ui.treeView.selectedIndexes()
         selected_rows = set(index.row() for index in selected_indexes)
@@ -653,21 +653,21 @@ class RoutineBox(object):
             if routine.filepath in filepaths:
                 routine.restart()
         self.update_select_all_checkstate()
-       
+
     def analysis_loop(self):
         while True:
             filepath = self.from_filebox.get()
             if self.multishot:
                 assert filepath is None
-                # TODO: get the filepath of the output h5 file: 
+                # TODO: get the filepath of the output h5 file:
                 # filepath = self.filechooserentry.get_text()
             self.logger.info('got a file to process: %s'%filepath)
             self.do_analysis(filepath)
-    
+
     def todo(self):
         """How many analysis routines are not done?"""
         return len([r for r in self.routines if r.enabled() and not r.done])
-        
+
     def do_analysis(self, filepath):
         """Run all analysis routines once on the given filepath,
         which is a shot file if we are a singleshot routine box"""
@@ -710,7 +710,7 @@ class RoutineBox(object):
         else:
             self.to_filebox.put(['done', 100.0])
         self.logger.debug('completed analysis of %s'%filepath)
-            
+
     def reorder(self, order):
         assert len(order) == len(set(order)), 'ordering contains non-unique elements'
         # Apply the reordering to the liststore:
@@ -720,7 +720,7 @@ class RoutineBox(object):
         self.ui.treeView.sortByColumn(self.COL_NAME, QtCore.Qt.AscendingOrder)
         # Apply new order to our list of routines too:
         self.routines = [self.routines[i] for i in order]
-        
+
     def update_select_all_checkstate(self):
         with self.select_all_checkbox_state_changed_disconnected:
             all_states = []
@@ -733,7 +733,7 @@ class RoutineBox(object):
                 self.select_all_checkbox.setCheckState(QtCore.Qt.Unchecked)
             else:
                 self.select_all_checkbox.setCheckState(QtCore.Qt.PartiallyChecked)
-                
+
    # TESTING ONLY REMOVE IN PRODUCTION
     def queue_dummy_routines(self):
         folder = os.path.abspath('test_routines')
@@ -741,8 +741,8 @@ class RoutineBox(object):
             routine = AnalysisRoutine(os.path.join(folder, filepath), self.model, self.output_box_port)
             self.routines.append(routine)
         self.update_select_all_checkstate()
-            
-            
+
+
 class EditColumnsDialog(QtGui.QDialog):
     # A signal for when the window manager has created a new window for this widget:
     newWindow = Signal(int)
@@ -879,7 +879,7 @@ class EditColumns(object):
             visible_item = self.model.item(row, self.COL_VISIBLE)
             self.update_visible_state(visible_item, state)
         self.do_sort()
-        
+
         self.filebox.set_columns_visible(self.columns_visible)
 
     def update_visible_state(self, item, state):
@@ -1055,15 +1055,15 @@ class TableView(QtGui.QTableView):
         self._pressed_index = None
         self._double_click = False
         return result
-        
-        
+
+
 class DataFrameModel(QtCore.QObject):
 
     COL_STATUS = 0
     COL_FILEPATH = 1
 
     ROLE_STATUS_PERCENT = QtCore.Qt.UserRole + 1
-    
+
     columns_changed = Signal()
 
     def __init__(self, view, exp_config):
@@ -1082,7 +1082,7 @@ class DataFrameModel(QtCore.QObject):
                              color: black;
                            }
                            """
-                           
+
         self._header = HorizontalHeaderViewWithWidgets(self._model)
         self._vertheader = QtGui.QHeaderView(QtCore.Qt.Vertical)
         self._vertheader.setResizeMode(QtGui.QHeaderView.Fixed)
@@ -1165,7 +1165,7 @@ class DataFrameModel(QtCore.QObject):
         for row in selected_rows:
             status_item = self._model.item(row, self.COL_STATUS)
             status_item.setData(0, self.ROLE_STATUS_PERCENT)
-        
+
     def on_view_context_menu_requested(self, point):
         menu = QtGui.QMenu(self._view)
         menu.addAction(self.action_remove_selected)
@@ -1174,7 +1174,7 @@ class DataFrameModel(QtCore.QObject):
     def on_double_click(self, index):
         filepath_item = self._model.item(index.row(), self.COL_FILEPATH)
         shot_filepath = filepath_item.text()
-        
+
         # get path to text editor
         viewer_path = self.exp_config.get('programs', 'hdf5_viewer')
         viewer_args = self.exp_config.get('programs', 'hdf5_viewer_arguments')
@@ -1192,7 +1192,7 @@ class DataFrameModel(QtCore.QObject):
         except Exception as e:
             error_dialog("Unable to launch hdf5 viewer specified in %s. Error was: %s" %
                          (self.exp_config.config_path, str(e)))
-        
+
     def set_columns_visible(self, columns_visible):
         self.columns_visible = columns_visible
         for column_index, visible in columns_visible.items():
@@ -1290,7 +1290,7 @@ class DataFrameModel(QtCore.QObject):
         if status_percent is not None:
             status_item = self._model.item(model_row_number, self.COL_STATUS)
             status_item.setData(status_percent, self.ROLE_STATUS_PERCENT)
-            
+
         if new_column_names:
             self.columns_changed.emit()
 
@@ -1305,9 +1305,9 @@ class DataFrameModel(QtCore.QObject):
     def add_files(self, filepaths, new_row_data=None):
         to_add = []
         for filepath in filepaths:
-            # Ignore duplicate shots when not doing repeats.            
-            (isRep, _, _) =   labscript_utils.file_utils.is_rep_name(filepath)
-            
+            # Ignore duplicate shots when not doing repeats.
+            (isRep, _, _, _) =   labscript_utils.file_utils.is_rep_name(filepath)
+
             if filepath in self.dataframe['filepath'].values and not isRep:
                 # Ignore duplicates:
                 app.output_box.output('Warning: Ignoring duplicate shot %s\n' % filepath, red=True)
@@ -1342,8 +1342,8 @@ class DataFrameModel(QtCore.QObject):
             if status_item.data(self.ROLE_STATUS_PERCENT) != 100:
                 filepath_item = self._model.item(row, self.COL_FILEPATH)
                 return filepath_item.text()
-        
-        
+
+
 class FileBox(object):
 
     def __init__(self, container, exp_config, to_singleshot, from_singleshot, to_multishot, from_multishot):
@@ -1372,7 +1372,7 @@ class FileBox(object):
 
         self.analysis_paused = False
         self.multishot_required = False
-        
+
         # An Event to let the analysis thread know to check for shots that
         # need analysing, rather than using a time.sleep:
         self.analysis_pending = threading.Event()
@@ -1404,7 +1404,7 @@ class FileBox(object):
         self.ui.pushButton_analysis_running.toggled.connect(self.on_analysis_running_toggled)
         self.ui.pushButton_mark_as_not_done.clicked.connect(self.on_mark_selection_not_done_clicked)
         self.ui.pushButton_run_multishot_analysis.clicked.connect(self.on_run_multishot_analysis_clicked)
-        
+
     def on_edit_columns_clicked(self):
         self.edit_columns_dialog.show()
 
@@ -1440,16 +1440,16 @@ class FileBox(object):
             self.ui.pushButton_analysis_running.setIcon(QtGui.QIcon(':qtutils/fugue/control'))
             self.ui.pushButton_analysis_running.setText('Analysis running')
             self.analysis_pending.set()
-     
+
     def on_mark_selection_not_done_clicked(self):
         self.shots_model.mark_selection_not_done()
         # Let the analysis loop know to look for these shots:
         self.analysis_pending.set()
-        
+
     def on_run_multishot_analysis_clicked(self):
          self.multishot_required = True
          self.analysis_pending.set()
-        
+
     def set_columns_visible(self, columns_visible):
         self.shots_model.set_columns_visible(columns_visible)
 
@@ -1558,13 +1558,13 @@ class FileBox(object):
             if self.multishot_required:
                 logger.info('doing multishot analysis')
                 self.do_multishot_analysis()
-            
-   
+
+
     @inmain_decorator()
     def pause_analysis(self):
         # This automatically triggers the slot that sets self.analysis_paused
         self.ui.pushButton_analysis_running.setChecked(True)
-        
+
     def do_singleshot_analysis(self, filepath):
         self.to_singleshot.put(filepath)
         while True:
@@ -1580,7 +1580,7 @@ class FileBox(object):
             if signal == 'error':
                 self.pause_analysis()
                 return
-                        
+
     def do_multishot_analysis(self):
         self.to_multishot.put(None)
         while True:
@@ -1591,8 +1591,8 @@ class FileBox(object):
             elif signal == 'error':
                 self.pause_analysis()
                 return
-        
-        
+
+
 class Lyse(object):
 
     def __init__(self):
