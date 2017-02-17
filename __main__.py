@@ -1142,7 +1142,7 @@ class DataFrameModel(QtCore.QObject):
             raise LookupError('No item found')
         
         # In the case of repeats we are taking the last one.
-        # TODO: may be a good idea to add code to purge all duplicates when we inject
+        # TODO: IBS may be a good idea to add code to purge all duplicates when we inject
         # a new one
         item = possible_items[-1]
         index = item.index()
