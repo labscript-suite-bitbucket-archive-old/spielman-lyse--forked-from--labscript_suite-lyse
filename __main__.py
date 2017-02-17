@@ -1135,16 +1135,12 @@ class DataFrameModel(QtCore.QObject):
     def get_model_row_by_filepath(self, filepath):
         filepath_colname = ('filepath',) + ('',) * (self.nlevels - 1)
         possible_items = self._model.findItems(filepath, column=self.column_indices[filepath_colname])
-        # if len(possible_items) > 1:
-        #    raise LookupError('Multiple items found')
-        # el
-        if not possible_items:
+        if len(possible_items) > 1:
+            raise LookupError('Multiple items found')
+        elif not possible_items:
             raise LookupError('No item found')
-        
-        # In the case of repeats we are taking the last one.
-        # TODO: IBS may be a good idea to add code to purge all duplicates when we inject
-        # a new one
-        item = possible_items[-1]
+
+        item = possible_items[0]
         index = item.index()
         return index.row()
 
@@ -1313,15 +1309,33 @@ class DataFrameModel(QtCore.QObject):
             # Ignore duplicate shots when not doing repeats.            
             (isRep, _, _) =   labscript_utils.file_utils.is_rep_name(filepath)
             
-            if filepath in self.dataframe['filepath'].values and not isRep:
+            if not filepath in self.dataframe['filepath'].values:
+                # we are not a duplicate
+                to_add.append(filepath)
+            elif isRep:
+                # We are a duplicate, but also a rep
+                to_add.append(filepath)
+                
+                # Remove all instances from dataframe:
+                idx = self.dataframe['filepath'].values == filepath
+                self.dataframe['filepath'][idx] = ""
+                
+                # And also from the front panel
+                filepath_colname = ('filepath',) + ('',) * (self.nlevels - 1)
+                existing_items = self._model.findItems(filepath, column=self.column_indices[filepath_colname])
+                
+                for item in existing_items:
+                    item.setText("")
+                    item.setToolTip("")
+                
+            else:
                 # Ignore duplicates:
                 app.output_box.output('Warning: Ignoring duplicate shot %s\n' % filepath, red=True)
                 if new_row_data is not None:
                     df_row_index = np.where(new_row_data['filepath'].values == filepath)
                     new_row_data = new_row_data.drop(df_row_index[0])
                     new_row_data.index = pandas.Index(range(len(new_row_data)))
-            else:
-                to_add.append(filepath)
+
         for filepath in to_add:
             # Add the new row to the model:
             self._model.appendRow(self.new_row(filepath))
@@ -1334,6 +1348,7 @@ class DataFrameModel(QtCore.QObject):
         else:
             assert len(new_row_data) == len(to_add)
         self.dataframe = concat_with_padding(self.dataframe, new_row_data)
+        
         self.update_column_levels()
         for filepath in to_add:
             self.update_row(filepath, dataframe_already_updated=True)
