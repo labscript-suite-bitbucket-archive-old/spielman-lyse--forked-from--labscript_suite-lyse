@@ -1135,12 +1135,16 @@ class DataFrameModel(QtCore.QObject):
     def get_model_row_by_filepath(self, filepath):
         filepath_colname = ('filepath',) + ('',) * (self.nlevels - 1)
         possible_items = self._model.findItems(filepath, column=self.column_indices[filepath_colname])
-        
-        # If several items with the same name appear, this is OK, just take the first
-        # but no items is a problem
+        # if len(possible_items) > 1:
+        #    raise LookupError('Multiple items found')
+        # el
         if not possible_items:
             raise LookupError('No item found')
-        item = possible_items[0]
+        
+        # In the case of repeats we are taking the last one.
+        # TODO: may be a good idea to add code to purge all duplicates when we inject
+        # a new one
+        item = possible_items[-1]
         index = item.index()
         return index.row()
 
