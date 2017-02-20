@@ -27,6 +27,11 @@ def asdatetime(timestr):
 def get_nested_dict_from_shot(filepath):
     row = runmanager.get_shot_globals(filepath)
     with h5py.File(filepath,'r') as h5_file:
+        # if 'data' in h5_file:
+        #     for groupname in h5_file['data']:
+        #         resultsgroup = h5_file['data'][groupname]
+        #         if 'camera' in dict(resultsgroup.attrs).keys():
+        #             row[groupname] = h5_file['data'][groupname]['Raw'][:]
         if 'results' in h5_file:
             for groupname in h5_file['results']:
                 resultsgroup = h5_file['results'][groupname]
@@ -50,13 +55,13 @@ def get_nested_dict_from_shot(filepath):
             row['sequence_index'] = h5_file.attrs['sequence_index']
         except:
             row['sequence_index'] = float('nan')
-        if 'script' in h5_file: 
+        if 'script' in h5_file:
             row['labscript'] = h5_file['script'].attrs['name']
         try:
             row['run time'] = asdatetime(h5_file.attrs['run time'])
         except KeyError:
             row['run time'] = float('nan')
-        try:    
+        try:
             row['run number'] = h5_file.attrs['run number']
         except KeyError:
             # ignore:
@@ -67,7 +72,7 @@ def get_nested_dict_from_shot(filepath):
         except KeyError:
             pass
         return row
-            
+
 def flatten_dict(dictionary, keys=tuple()):
     """Takes a nested dictionary whose keys are strings, and returns a
     flat dictionary whose keys are tuples of strings, each element of
@@ -80,7 +85,7 @@ def flatten_dict(dictionary, keys=tuple()):
         else:
             result[keys + (str(name),)] = dictionary[name]
     return result
-            
+
 def flat_dict_to_hierarchical_dataframe(dictionary):
     """Make all the keys tuples of the same length"""
     max_tuple_length = 2 # Must have at least two levels to make a MultiIndex
@@ -91,9 +96,9 @@ def flat_dict_to_hierarchical_dataframe(dictionary):
         newkey = key[:]
         while len(newkey) < max_tuple_length:
             newkey += ('',)
-        result[newkey] = dictionary[key]    
+        result[newkey] = dictionary[key]
     index = pandas.MultiIndex.from_tuples(sorted(result.keys()))
-    return pandas.DataFrame([result],columns=index)  
+    return pandas.DataFrame([result],columns=index)
 
 def flat_dict_to_flat_series(dictionary):
     max_tuple_length = 2 # Must have at least two levels to make a MultiIndex
@@ -104,16 +109,16 @@ def flat_dict_to_flat_series(dictionary):
         else:
             result[key[0]] = dictionary[key]
     keys = result.keys()
-    keys.sort(key = lambda item: 
+    keys.sort(key = lambda item:
         (len(item),) + item if isinstance(item, tuple) else (1,item))
-    return pandas.Series(result,index=keys)  
-          
+    return pandas.Series(result,index=keys)
+
 def get_dataframe_from_shot(filepath):
     nested_dict = get_nested_dict_from_shot(filepath)
     flat_dict =  flatten_dict(nested_dict)
     df = flat_dict_to_hierarchical_dataframe(flat_dict)
     return df
-    
+
 def get_dataframe_from_shots(filepaths):
     return concat_with_padding(*[get_dataframe_from_shot(filepath) for filepath in filepaths])
 
@@ -122,7 +127,7 @@ def get_series_from_shot(filepath):
     flat_dict =  flatten_dict(nested_dict)
     s = flat_dict_to_flat_series(flat_dict)
     return s
-    
+
 def pad_columns(df, n):
     """Add depth to hiererchical column labels with empty strings"""
     if df.columns.nlevels == n:
@@ -146,7 +151,7 @@ def concat_with_padding(*dataframes):
         if df.columns.nlevels < max_nlevels:
             dataframes[i] = pad_columns(df, max_nlevels)
     return pandas.concat(dataframes, ignore_index=True)
-    
+
 def replace_with_padding(df,row,index):
     if df.columns.nlevels < row.columns.nlevels:
         df = pad_columns(df, row.columns.nlevels)
@@ -160,7 +165,7 @@ def replace_with_padding(df,row,index):
     df = df.append(row)
     df = df.sort()
     return df
-    
+
 def dict_diff(dict1, dict2):
     """Return the difference between two dictionaries as a dictionary of key: [val1, val2] pairs.
     Keys unique to either dictionary are included as key: [val1, '-'] or key: ['-', val2]."""
@@ -174,18 +179,17 @@ def dict_diff(dict1, dict2):
             if dict1[key] != dict2[key]:
                 diff_keys.append(key)
 
-    dict1_unique = [key for key in dict1.keys() if key not in common_keys]    
+    dict1_unique = [key for key in dict1.keys() if key not in common_keys]
     dict2_unique = [key for key in dict2.keys() if key not in common_keys]
-                
+
     diff = {}
     for key in diff_keys:
         diff[key] = [dict1[key], dict2[key]]
-    
+
     for key in dict1_unique:
         diff[key] = [dict1[key], '-']
-        
+
     for key in dict2_unique:
-        diff[key] = ['-', dict2[key]]       
+        diff[key] = ['-', dict2[key]]
 
     return diff
-    
