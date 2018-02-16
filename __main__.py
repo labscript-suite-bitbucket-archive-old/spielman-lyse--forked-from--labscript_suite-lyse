@@ -1321,17 +1321,22 @@ class DataFrameModel(QtCore.QObject):
 
         # Update the data in the Qt model:
         model_row_number = self.get_model_row_by_filepath(filepath)
-        dataframe_row = dict(self.dataframe.ix[df_row_index])
+        dataframe_row = self.dataframe.iloc[df_row_index].to_dict() # Possible that conversion to dict was not working.
+        
         for column_number, column_name in self.column_names.items():
             if not isinstance(column_name, tuple):
                 # One of our special columns, does not correspond to a column in the dataframe:
                 continue
+#            if updated_row_data is not None and column_name not in updated_row_data:
+#                continue
+            
             item = self._model.item(model_row_number, column_number)
             if item is None:
                 # This is the first time we've written a value to this part of the model:
                 item = QtGui.QStandardItem('NaN')
                 item.setData(QtCore.Qt.AlignCenter, QtCore.Qt.TextAlignmentRole)
                 self._model.setItem(model_row_number, column_number, item)
+                
             value = dataframe_row[column_name]
             if isinstance(value, float):
                 value_str = scientific_notation(value)
